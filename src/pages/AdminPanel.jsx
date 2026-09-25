@@ -4,6 +4,14 @@ import { supabase, getAdminToken, clearAdminToken } from '../supabaseClient.js'
 import StatusBadge from '../components/StatusBadge.jsx'
 import DecisionDialog from '../components/DecisionDialog.jsx'
 
+const secondsToMinutes = (value) => {
+  const seconds = Number(value)
+  if (!Number.isFinite(seconds) || seconds <= 0) return 15
+  return Math.max(1, Math.round(seconds / 60))
+}
+
+const minutesToSeconds = (value) => Number(value) * 60
+
 export default function AdminPanel() {
   const navigate = useNavigate()
   const token = getAdminToken()
@@ -25,7 +33,7 @@ export default function AdminPanel() {
     setEventState(data)
     if (data) {
       setBriefDraft(data.brief_text || '')
-      setDurationDraft(data.display_duration_seconds || 15)
+      setDurationDraft(secondsToMinutes(data.display_duration_seconds))
     }
   }, [])
 
@@ -95,7 +103,7 @@ export default function AdminPanel() {
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: 'running',
       p_brief_text: briefDraft,
-      p_display_duration_seconds: Number(durationDraft) * 60
+      p_display_duration_seconds: minutesToSeconds(durationDraft)
     })
   }
 
@@ -104,7 +112,7 @@ export default function AdminPanel() {
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: 'closed',
       p_brief_text: briefDraft,
-      p_display_duration_seconds: Number(durationDraft) * 60
+      p_display_duration_seconds: minutesToSeconds(durationDraft)
     })
   }
 
@@ -113,7 +121,7 @@ export default function AdminPanel() {
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: eventState?.status || 'not_started',
       p_brief_text: briefDraft,
-      p_display_duration_seconds: Number(durationDraft) * 60
+      p_display_duration_seconds: minutesToSeconds(durationDraft)
     })
     setNotice('Brief saved.')
   }
