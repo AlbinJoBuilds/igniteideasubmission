@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, getAdminToken, clearAdminToken } from '../supabaseClient.js'
 import StatusBadge from '../components/StatusBadge.jsx'
+import DecisionDialog from '../components/DecisionDialog.jsx'
 
 export default function AdminPanel() {
   const navigate = useNavigate()
@@ -17,6 +18,7 @@ export default function AdminPanel() {
   const [reasons, setReasons] = useState({}) // submission_id -> reason text
   const [busyId, setBusyId] = useState(null)
   const [notice, setNotice] = useState('')
+  const [activeDialog, setActiveDialog] = useState(null) // { submission, match, targetStatus }
 
   const loadEventState = useCallback(async () => {
     const { data } = await supabase.from('event_state').select('*').eq('id', 1).single()
@@ -116,14 +118,29 @@ export default function AdminPanel() {
     setNotice('Brief saved.')
   }
 
-  async function handleDecision(submissionId, newStatus) {
+  async function handleDecision(submissionId, newStatus, customReason) {
     setBusyId(submissionId)
-    await callAdminRpc('organizer_set_status', {
+    const reasonToUse = customReason !== undefined ? customReason : (reasons[submissionId] || null)
+    const res = await callAdminRpc('organizer_set_status', {
       p_submission_id: submissionId,
       p_new_status: newStatus,
-      p_reason: reasons[submissionId] || null
+      p_reason: reasonToUse
     })
     setBusyId(null)
+    if (res !== null) {
+      loadQueue()
+      loadAuditLog()
+      return true
+    }
+    return false
+  }
+
+  function openDialog(submission, targetStatus) {
+    setActiveDialog({
+      submission,
+      match: matches[submission.id],
+      targetStatus
+    })
   }
 
   function handleLogout() {
@@ -221,14 +238,14 @@ export default function AdminPanel() {
                 <button
                   className="btn-approve btn-small"
                   disabled={busyId === row.id}
-                  onClick={() => handleDecision(row.id, 'approved')}
+                  onClick={() => openDialog(row, 'approved')}
                 >
                   Approve
                 </button>
                 <button
                   className="btn-reject btn-small"
                   disabled={busyId === row.id}
-                  onClick={() => handleDecision(row.id, 'rejected')}
+                  onClick={() => openDialog(row, 'rejected')}
                 >
                   Reject
                 </button>
@@ -236,7 +253,7 @@ export default function AdminPanel() {
             </div>
           ))}
 
-          <ApprovedList onRevoke={handleDecision} busyId={busyId} reasons={reasons} setReasons={setReasons} />
+          <ApprovedList onOpenDialog={openDialog} busyId={busyId} reasons={reasons} setReasons={setReasons} />
         </div>
       )}
 
@@ -255,11 +272,24 @@ export default function AdminPanel() {
           ))}
         </div>
       )}
+
+      {activeDialog && (
+        <DecisionDialog
+          submission={activeDialog.submission}
+          match={activeDialog.match}
+          targetStatus={activeDialog.targetStatus}
+          busy={busyId === activeDialog.submission.id}
+          onClose={() => setActiveDialog(null)}
+          onConfirm={async (id, status, reason) => {
+            return await handleDecision(id, status, reason)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function ApprovedList({ onRevoke, busyId, reasons, setReasons }) {
+function ApprovedList({ onOpenDialog, busyId, reasons, setReasons }) {
   const [approved, setApproved] = useState([])
   const token = getAdminToken()
 
@@ -301,7 +331,7 @@ function ApprovedList({ onRevoke, busyId, reasons, setReasons }) {
             onChange={(e) => setReasons((r) => ({ ...r, [row.id]: e.target.value }))}
           />
           <div className="row-actions">
-            <button className="btn-revoke btn-small" disabled={busyId === row.id} onClick={() => onRevoke(row.id, 'rejected')}>
+            <button className="btn-revoke btn-small" disabled={busyId === row.id} onClick={() => onOpenDialog(row, 'rejected')}>
               Revoke
             </button>
           </div>
