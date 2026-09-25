@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
 import StatusBadge from '../components/StatusBadge.jsx'
-import Countdown from '../components/Countdown.jsx'
 
 export default function SprintScreen() {
   const navigate = useNavigate()
@@ -53,13 +52,6 @@ export default function SprintScreen() {
         <p className="eyebrow">Team {team.teamNumber} · {team.teamName}</p>
         <h1 className="headline">Topic Sprint</h1>
         <StatusBadge status={status} />
-
-        {status === 'running' && eventState?.display_started_at && eventState?.display_duration_seconds && (
-          <Countdown
-            startedAt={eventState.display_started_at}
-            durationSeconds={eventState.display_duration_seconds}
-          />
-        )}
 
         <p className="sub" style={{ marginTop: 18 }}>
           {eventState?.brief_text || 'Claim a campus-innovation idea before another team beats you to it. One idea per team.'}

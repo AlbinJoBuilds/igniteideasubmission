@@ -4,21 +4,12 @@ import { supabase, getAdminToken, clearAdminToken } from '../supabaseClient.js'
 import StatusBadge from '../components/StatusBadge.jsx'
 import DecisionDialog from '../components/DecisionDialog.jsx'
 
-const secondsToMinutes = (value) => {
-  const seconds = Number(value)
-  if (!Number.isFinite(seconds) || seconds <= 0) return 15
-  return Math.max(1, Math.round(seconds / 60))
-}
-
-const minutesToSeconds = (value) => Number(value) * 60
-
 export default function AdminPanel() {
   const navigate = useNavigate()
   const token = getAdminToken()
 
   const [eventState, setEventState] = useState(null)
   const [briefDraft, setBriefDraft] = useState('')
-  const [durationDraft, setDurationDraft] = useState(15)
   const [queue, setQueue] = useState([])
   const [auditLog, setAuditLog] = useState([])
   const [matches, setMatches] = useState({}) // submission_id -> matched submission row
@@ -33,7 +24,6 @@ export default function AdminPanel() {
     setEventState(data)
     if (data) {
       setBriefDraft(data.brief_text || '')
-      setDurationDraft(secondsToMinutes(data.display_duration_seconds))
     }
   }, [])
 
@@ -102,8 +92,7 @@ export default function AdminPanel() {
     setNotice('')
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: 'running',
-      p_brief_text: briefDraft,
-      p_display_duration_seconds: minutesToSeconds(durationDraft)
+      p_brief_text: briefDraft
     })
   }
 
@@ -111,8 +100,7 @@ export default function AdminPanel() {
     setNotice('')
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: 'closed',
-      p_brief_text: briefDraft,
-      p_display_duration_seconds: minutesToSeconds(durationDraft)
+      p_brief_text: briefDraft
     })
   }
 
@@ -120,8 +108,7 @@ export default function AdminPanel() {
     setNotice('')
     await callAdminRpc('organizer_set_event_state', {
       p_new_status: eventState?.status || 'not_started',
-      p_brief_text: briefDraft,
-      p_display_duration_seconds: minutesToSeconds(durationDraft)
+      p_brief_text: briefDraft
     })
     setNotice('Brief saved.')
   }
@@ -179,17 +166,8 @@ export default function AdminPanel() {
       <div className="panel panel-wide" style={{ marginBottom: 24 }}>
         <label htmlFor="brief">Brief text (shown on the sprint screen)</label>
         <textarea id="brief" value={briefDraft} onChange={(e) => setBriefDraft(e.target.value)} />
-        <label htmlFor="duration">Cosmetic countdown length (minutes)</label>
-        <input
-          id="duration"
-          type="number"
-          min="1"
-          value={durationDraft}
-          onChange={(e) => setDurationDraft(e.target.value)}
-          style={{ maxWidth: 120 }}
-        />
         <div className="row-actions">
-          <button className="btn-ghost btn-small" onClick={handleSaveBrief}>Save brief &amp; timer</button>
+          <button className="btn-ghost btn-small" onClick={handleSaveBrief}>Save brief</button>
         </div>
         {notice && <p className="error-text" style={{ color: 'var(--ok)' }}>{notice}</p>}
       </div>
